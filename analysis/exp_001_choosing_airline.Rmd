@@ -1,0 +1,20 @@
+---
+title: "Transportation airline data"
+author: "Coach Skufca"
+date: "2022-09-26"
+output: html_notebook
+---
+
+Class play with NYC flights data.
+
+Experiment 4 includes summarizing, looking to match another report.
+
+
+## Load Packages
+
+```{r}
+
+library(tidyverse)
+library(here)
+library(janitor)
+```
