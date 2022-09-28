@@ -5,9 +5,9 @@ date: "2022-09-26"
 output: html_notebook
 ---
 
-Class play with NYC flights data.
 
-Experiment 4 includes summarizing, looking to match another report.
+
+Experiment 1 includes summarizing, looking to match another report.
 
 
 ## Load Packages
@@ -17,4 +17,202 @@ Experiment 4 includes summarizing, looking to match another report.
 library(tidyverse)
 library(here)
 library(janitor)
+```
+
+
+## Load the BOT data
+
+We take advantage of the `here` package to get the path to the file that we stored.
+
+Load that data into dataframe called `df2019` using the read_csv command.   Note that you do not need to unzip the file.
+
+**NOTE** I use `clean_names` from the janitor package to get names formatted in a consistent and useable way.
+
+```{r}
+thisfile=here("data_raw","DL_SelectFields2022.zip")
+
+df2022=read_csv(thisfile) %>% clean_names()
+```
+
+## Subsetting to data of interest
+
+Let's focus on flights from La Guardia (airport "LGA") and eliminate cargo flights by requiring at leat 1 passenger.
+
+Call the resultant dataframe `df9`.
+
+```{r}
+df1=df2022 %>% filter(passengers>0,origin=="LGA" | dest=="LGA")
+
+```
+
+We create a barchart as we have done before:
+
+```{r}
+df1 %>% ggplot(aes(unique_carrier_name)) + geom_bar() +coord_flip()
+```
+
+Nation wide?
+
+```{r}
+df2022 %>% filter(passengers>0) %>%  ggplot(aes(unique_carrier_name)) + geom_bar() +coord_flip()
+```
+
+```{r}
+df2022 %>% filter(passengers>0) %>% pull(unique_carrier_name) %>% unique()
+```
+
+
+
+### Summarize data
+
+```{r}
+df2=df2022 %>% filter(passengers>0) %>% 
+  group_by(carrier_name) %>% 
+  summarise(total_pass=sum(passengers),  num_flights=sum(departures_performed)) 
+
+df2
+df2 %>% ggplot(aes(reorder(carrier_name,total_pass),y=total_pass)) + geom_col() +coord_flip()
+```
+
+
+```{r}
+df3=df2 %>% filter(total_pass>1e6)
+df3 %>%   ggplot(aes(reorder(carrier_name,total_pass),y=total_pass)) + geom_col() +coord_flip()
+```
+
+
+```{r}
+library(DataExplorer)
+```
+
+```{r}
+plot_histogram(df1)
+```
+```{r}
+library(explore)
+```
+
+```{r}
+explore(df2)
+```
+
+
+
+# below here is not meaninful
+
+** Take a look at the dataset and discover why counting rows is not going to give us a count of flights. **
+
+The visualization we want is:
+
+```{r}
+df9 %>% ggplot(aes(month)) + geom_bar(aes(weight=departures_performed))
+```
+Make some observations about this plot.
+
+
+### A new visualization
+
+Can you make a boxplot where the bar height is based on the number of passengers riding each month.
+
+
+
+
+### Just because you can
+
+
+Here is pretty, but not so useful plot.
+
+```{r}
+df9 %>% ggplot(aes(month,fill=carrier_name)) + geom_bar(aes(weight=departures_performed))
+```
+## Arrivals and departures from LGA
+
+```{r}
+df10=df2019 %>% filter(passengers>0,origin=="LGA" | dest=="LGA")
+
+df10 %>% ggplot(aes(month)) + geom_bar(aes(weight=passengers))
+```
+
+```{r}
+df11=df10 %>% select(month,passengers,seats, carrier_name, dest, origin)
+
+df12=df10 %>% select(1:5, month, contains("id") )
+
+df13=df11 %>% mutate(percent_loading = passengers/seats*100)
+
+df13 %>% ggplot(aes(percent_loading)) +
+  geom_histogram()+facet_wrap(~carrier_name,scales="free_y")
+
+```
+
+### Summarize data
+
+```{r}
+df15=df2019 %>% filter(passengers>0,origin=="LGA" | dest=="LGA") %>% 
+  group_by(month,carrier_name) %>% 
+  summarise(total_pass=sum(passengers),  num_flights=sum(departures_performed)) %>%
+  mutate(average_pass_per_flight=total_pass/num_flights)
+
+
+df15 
+df15 %>% ggplot(aes(x=month,y=average_pass_per_flight,color=carrier_name))+
+  geom_line()
+```
+Insights from above plot:
+
+* Appears to be a typical pattern (across the year) for major carriers.
+* Appears to be about four sizes of flights
+
+```{r}
+df15_1=df2019 %>% filter(passengers>0,origin=="LGA" | dest=="LGA") %>% 
+  group_by(month,carrier_name) %>% 
+  summarise(total_seats=sum(seats),  num_flights=sum(departures_performed)) %>%
+  mutate(average_seats_per_flight=total_seats/num_flights)
+
+
+df15_1 
+df15_1 %>% ggplot(aes(x=month,y=average_seats_per_flight,color=carrier_name))+
+  geom_line()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+df15=df2019 %>% filter(passengers>0,origin=="LGA" | dest=="LGA") %>% 
+  group_by(month) %>% mutate(percent_loading = passengers/seats*100) %>%
+  summarise(loading=mean(percent_loading)) 
+```
+
+```{r}
+df16=df2019 %>% filter(passengers>0,origin=="LGA" | dest=="LGA") %>% 
+  group_by(month,carrier_name) %>% mutate(percent_loading = passengers/seats*100) %>%
+  summarise(loading=mean(percent_loading)) 
+```
+
+```{r}
+df16 %>% ggplot(aes(x=month,y=loading,color=carrier_name))+
+  geom_point()+
+  theme_minimal()+geom_line()+
+  theme(legend.position="bottom")
+```
+
+### cargo questions - which airport
+
+```{r}
+df17=df2019 %>% filter(origin_city_name=="New York, NY" ) %>% 
+  group_by(month,origin) %>% 
+  summarise(freight=sum(freight,na.rm = FALSE),passengers=sum(passengers),n=n()) 
+df17
 ```
