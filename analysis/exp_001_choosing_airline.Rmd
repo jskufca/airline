@@ -13,9 +13,10 @@ Experiment 1 includes summarizing, looking to match another report.
 ## Load Packages
 
 ```{r}
-
+library(lubridate)
 library(tidyverse)
 library(here)
+library(fs)
 library(janitor)
 ```
 
@@ -29,7 +30,7 @@ Load that data into dataframe called `df2019` using the read_csv command.   Note
 **NOTE** I use `clean_names` from the janitor package to get names formatted in a consistent and useable way.
 
 ```{r}
-thisfile=here("data_raw","DL_SelectFields2022.zip")
+thisfile=here("data_raw","DL_SelectFields_2022.zip")
 
 df2022=read_csv(thisfile) %>% clean_names()
 ```
@@ -88,12 +89,65 @@ library(DataExplorer)
 ```{r}
 plot_histogram(df1)
 ```
+
+
 ```{r}
 library(explore)
+explore(df2)
+```
+
+
+
+## Aggregated dataset
+
+Get list of files:
+
+```{r}
+filelist=dir_ls(here("data_raw"))
+
+dfc=map_dfr(filelist,~read_csv(.x))
+
+
+```
+
+Flights with passengers
+
+```{r}
+dfp=dfc %>% clean_names() %>% filter(passengers>0)%>%
+ mutate(yearmon= zoo::as.yearmon(year+(month-1)/12+.001) %>% as_date())
+```
+
+United Airlines flights
+
+```{r}
+ua="United Air Lines Inc." 
+dfu=dfp %>% filter(unique_carrier_name==ua)
+```
+
+
+```{r}
+dfu_lga=dfu %>% filter(origin=="LGA" | dest=="LGA")
+```
+
+
+
+```{r}
+dfu_lga_to_dest = dfu_lga %>% filter(origin=="LGA") %>% 
+add_count(dest,year,month,wt=passengers)
+```
+
+
+```{r}
+dfu_lga_to_dest %>% filter(year==2022) %>% filter(n>300) %>% 
+  ggplot(aes(x=month,y=n,color=dest)) +geom_line() + 
+    scale_colour_discrete(drop = TRUE) + geom_point()
 ```
 
 ```{r}
-explore(df2)
+dfu_lga_to_dest %>%  filter(n>1000) %>% 
+  ggplot(aes(x=yearmon,y=n,color=dest)) +geom_line() + 
+    scale_colour_discrete(drop = TRUE) + geom_point()+
+    scale_x_date(minor = "month")
 ```
 
 
